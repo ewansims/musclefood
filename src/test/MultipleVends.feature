@@ -9,9 +9,9 @@ Feature: Multiple Vends
   Scenario: Purchase multiple items in one transaction
     Given the vending machine is powered on
     And the current credit is British 5.00
-    And I purchase a product that costs British 2.00
-    And the display screen contains "New total £3.0"
-    When I purchase a product that costs British 1.00
+    And I purchase a product that costs 2.00
+    And the display screen contains "New total £3.00"
+    When I purchase a product that costs 1.00
     When I press the coin return
     Then 2.00 is returned to me in 1
-    And the display screen contains "1 coins returned, total £2.0"
+    And the display screen contains "1 coins returned, total £2.00"

@@ -19,13 +19,36 @@ public class Steps {
     double coinRejectTotal = 0.00;
     int rejectedCoins = 0;
     String currentCurrency = "";
-    String displayScreen = "Welcome";
+    String symbol = "";
+    String displayScreen = "";
 
     @After
     public void resetValues() {
-        pressCoinReturn();
-        emptyCoinRejectBox();
-        pressPowerButton();
+        powerLight = false;
+        totalBritish = 10.00;
+        totalEuros = 10.00;
+        currentCredit = 0.00;
+        coinRejectTotal = 0.00;
+        rejectedCoins = 0;
+        currentCurrency = "";
+        symbol = "";
+        displayScreen = "";
+    }
+
+    private String currencyStringifier(Double value) {
+        Assert.assertNotNull(currentCurrency);
+        Assert.assertNotNull(symbol);
+        String str = symbol + value;
+        String[] split = value.toString().split("\\.");
+        if (split[1].length() == 1)
+            str += "0";
+        else if (split[1].length() == 0)
+            str += "00";
+        return str;
+    }
+
+    private Double currencyPrettifier(String value) {
+        return Math.round(Double.parseDouble(value) * 100.0) / 100.0;
     }
 
     private void pressPowerButton() {
@@ -35,35 +58,36 @@ public class Steps {
 
     private void setCurrency(String currency) {
         currentCurrency = currency;
+        symbol = currency.equals("British") ? "£" : "€";
     }
 
-    private void rejectCoin(Double denomination) {
+    private void rejectCoin(String denomination) {
         if (currentCredit > 0.00)
-            displayScreen = "****Invalid coin****\nCurrent credit " + (currentCurrency.equals("British") ? "£" : "€") + currentCredit;
+            displayScreen = "****Invalid coin****\nCurrent credit " + currencyStringifier(currentCredit);
         else
             displayScreen = "****Invalid coin****\nWelcome";
-        coinRejectTotal += denomination;
+        coinRejectTotal += currencyPrettifier(denomination);
     }
 
-    private void insertCoin(String currency, Double denomination) {
+    private void insertCoin(String currency, String denomination) {
         // Is it a valid currency?
         if (!Arrays.asList(acceptedCurrencies).contains(currency) ||
                 // Is it the same currency as previously inserted coins?
-                (currentCurrency != "" && !currentCurrency.equals(currency)) ||
+                (!currentCurrency.equals("") && !currentCurrency.equals(currency)) ||
                 // Is it a valid denomination?
-                !Arrays.asList(acceptedCoins).contains(denomination)) {
+                !Arrays.asList(acceptedCoins).contains(currencyPrettifier(denomination))) {
             rejectCoin(denomination);
             return;
         }
         if (currentCredit == 0.00)
             setCurrency(currency);
-        currentCredit += denomination;
-        assert currentCurrency != "";
-        displayScreen = "Current credit " + (currentCurrency.equals("British") ? "£" : "€") + currentCredit;
+        currentCredit += currencyPrettifier(denomination);
+        displayScreen = "Current credit " + currencyStringifier(currentCredit);
     }
 
     private void pressCoinReturn() {
-        double total = currentCredit;
+        currentCredit = Math.round(currentCredit * 100.0) / 100.0;
+        String total = currencyStringifier(currentCredit);
         for (Double denomination : acceptedCoins) {
             // return the least amount of possible coins
             while (currentCredit >= denomination) {
@@ -76,7 +100,7 @@ public class Steps {
                 break;
             }
         }
-        displayScreen = rejectedCoins + " coins returned, total " + (currentCurrency.equals("British") ? "£" : "€") + total;
+        displayScreen = rejectedCoins + " coins returned, total " + total;
         currentCurrency = "";
     }
 
@@ -85,18 +109,18 @@ public class Steps {
         rejectedCoins = 0;
     }
 
-    private void purchaseItem(double itemCost, String currency) {
-        if (itemCost > currentCredit) {
-            displayScreen = "Insufficient credit, current total " + (currentCurrency.equals("British") ? "£" : "€") + currentCredit;
+    private void purchaseItem(String itemCost) {
+        double cost = currencyPrettifier(itemCost);
+        if (cost > currentCredit) {
+            displayScreen = "Insufficient credit, current total " + currencyStringifier(currentCredit);
             return;
         }
-        if (currency.equals("British")) {
-            totalBritish += itemCost;
-        } else {
-            totalEuros += itemCost;
-        }
-        currentCredit -= itemCost;
-        displayScreen = "Item dispensed. New total " + (currentCurrency.equals("British") ? "£" : "€") + currentCredit;
+        if (currentCurrency.equals("British"))
+            totalBritish += cost;
+        else
+            totalEuros += cost;
+        currentCredit -= cost;
+        displayScreen = "Item dispensed. New total " + currencyStringifier(currentCredit);
     }
 
     @Given("^(?:the vending machine is powered on|I turn on the vending machine)$")
@@ -116,7 +140,7 @@ public class Steps {
     public void iInsertTheBelowCoins(String currency, DataTable inserted) {
         List<String> coins = inserted.asList();
         for (String coin : coins) {
-            insertCoin(currency, Double.parseDouble(coin));
+            insertCoin(currency, coin);
         }
     }
 
@@ -133,7 +157,7 @@ public class Steps {
 
     @When("^I insert (\\d+) ([^\"]*)$")
     public void iInsertInvalidCoins(String denomination, String currency) {
-        insertCoin(currency, Double.parseDouble(denomination));
+        insertCoin(currency, denomination);
     }
 
     @Then("^The coin is rejected$")
@@ -148,21 +172,20 @@ public class Steps {
 
     @And("^the current credit is (British|Euro) ([^\"]*)$")
     public void theCurrentCreditIs(String currency, String credit) {
-        currentCurrency = currency;
-        currentCredit = Double.parseDouble(credit);
-        displayScreen = "Current credit " + (currentCurrency.equals("British") ? "£" : "€") + currentCredit;
+        setCurrency(currency);
+        currentCredit = currencyPrettifier(credit);
+        displayScreen = "Current credit " + currencyStringifier(currentCredit);
     }
 
-    @And("^I purchase a product that costs (British|Euros) ([^\"]*)$")
-    public void iPurchaseAProductThatCostsValue(String currency, String cost) {
+    @And("^I purchase a product that costs ([^\"]*)$")
+    public void iPurchaseAProductThatCostsValue(String cost) {
+        double changeRequired = currentCredit - Double.parseDouble(cost);
         // if insufficient change
-        if (
-                (currentCredit - Double.parseDouble(cost))  // change required
-                        > (currency.equals("British") ? totalBritish : totalEuros)) {
+        if ((currentCurrency.equals("British") ? totalBritish : totalEuros) < changeRequired) {
             displayScreen = "Insufficient change in vending machine, please select another item or return coins";
             return;
         }
-        purchaseItem(Double.parseDouble(cost), currency);
+        purchaseItem(cost);
     }
 
     @When("^I press the coin return$")
@@ -172,7 +195,7 @@ public class Steps {
 
     @Then("^([^\"]*) is returned to me in (\\d+)$")
     public void changeIsReturnedToMeInCoins(String total, int coins) {
-        Assert.assertEquals(coinRejectTotal, Double.parseDouble(total), 0.0001);
+        Assert.assertEquals(currencyPrettifier(total), coinRejectTotal, 0.0001);
         Assert.assertEquals(coins, rejectedCoins);
     }
 
