@@ -11,11 +11,12 @@ Feature: Dispensing Change
   Background:
     Given the vending machine is powered on
 
-  Scenario Outline: Purchase an item to the value of <Value>
-    And the current credit is British 5.00
+  Scenario Outline: Purchase an item to the value of £<Value>
+    And the current credit is £5.00
     And I purchase a product that costs <Value>
+    And product is delivered
     When I press the coin return
-    Then <Change> is returned to me in <Coins>
+    Then <Change> is returned to me in <Coins> coins
     And the display screen contains "<Coins> coins returned, total £<Change>"
     Examples:
       | Value | Change | Coins |
@@ -24,6 +25,6 @@ Feature: Dispensing Change
       | 4.99  | 0.01   | 1     |
 
   Scenario: Insufficient change in machine
-    And the current credit is British 11.00
+    And the current credit is £11.00
     And I purchase a product that costs 0.50
     Then the display screen contains "Insufficient change in vending machine, please select another item or return coins"

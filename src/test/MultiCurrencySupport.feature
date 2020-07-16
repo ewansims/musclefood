@@ -14,26 +14,26 @@ Feature: Multi-Currency Support
     When I insert the below <Currency> coins
       | 0.01 | 0.02 | 0.05 | 0.1 | 0.2 | 0.5 | 1 | 2 |
     Then the coins are not rejected
-    And the total credit shows <Currency> 3.88
+    And the total credit shows <Currency>3.88
     Examples:
       | Currency |
-      | British  |
-      | Euro     |
+      | £        |
+      | €        |
 
   Scenario: Insert invalid currency from the start
-    When I insert 1 CHF
+    When I insert $1
     Then The coin is rejected
     And the display screen contains "****Invalid coin****"
-    And the 1 CHF is returned to the customer
+    And the $1 is returned to me
 
   Scenario Outline: Insert invalid currency after a valid <Currency> coin inserted
     When I insert the below <Currency> coins
       | 1 |
-    Then I insert 1 CHF
+    Then I insert $1
     Then The coin is rejected
-    And the total credit shows <Currency> 1
-    And the 1 CHF is returned to the customer
+    And the total credit shows <Currency>1
+    And the $1 is returned to me
     Examples:
       | Currency |
-      | British  |
-      | Euro     |
+      | £        |
+      | €        |

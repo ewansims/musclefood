@@ -9,7 +9,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class Steps {
-    final String[] acceptedCurrencies = {"British", "Euro"};
+    final String[] acceptedCurrencies = {"£", "€"};
     final Double[] acceptedCoins = {2.00, 1.00, 0.50, 0.20, 0.10, 0.05, 0.02, 0.01};
 
     boolean powerLight = false;
@@ -18,8 +18,9 @@ public class Steps {
     double currentCredit = 0.00;
     double coinRejectTotal = 0.00;
     int rejectedCoins = 0;
+    boolean productDelivered = false;
     String currentCurrency = "";
-    String symbol = "";
+    String currentProduct = "";
     String displayScreen = "";
 
     @After
@@ -31,14 +32,14 @@ public class Steps {
         coinRejectTotal = 0.00;
         rejectedCoins = 0;
         currentCurrency = "";
-        symbol = "";
         displayScreen = "";
+        currentProduct = "";
+        boolean productDelivered = false;
     }
 
     private String currencyStringifier(Double value) {
         Assert.assertNotNull(currentCurrency);
-        Assert.assertNotNull(symbol);
-        String str = symbol + value;
+        String str = currentCurrency + value;
         String[] split = value.toString().split("\\.");
         if (split[1].length() == 1)
             str += "0";
@@ -58,7 +59,6 @@ public class Steps {
 
     private void setCurrency(String currency) {
         currentCurrency = currency;
-        symbol = currency.equals("British") ? "£" : "€";
     }
 
     private void rejectCoin(String denomination) {
@@ -104,11 +104,6 @@ public class Steps {
         currentCurrency = "";
     }
 
-    private void emptyCoinRejectBox() {
-        coinRejectTotal = 0.00;
-        rejectedCoins = 0;
-    }
-
     private void purchaseItem(String itemCost) {
         double cost = currencyPrettifier(itemCost);
         if (cost > currentCredit) {
@@ -120,6 +115,7 @@ public class Steps {
         else
             totalEuros += cost;
         currentCredit -= cost;
+        productDelivered = true;
         displayScreen = "Item dispensed. New total " + currencyStringifier(currentCredit);
     }
 
@@ -136,7 +132,7 @@ public class Steps {
         Assert.assertEquals(0.00, currentCredit, 0.00001);
     }
 
-    @When("^I insert the below (British|Euro) coins$")
+    @When("^I insert the below (£|€) coins$")
     public void iInsertTheBelowCoins(String currency, DataTable inserted) {
         List<String> coins = inserted.asList();
         for (String coin : coins) {
@@ -149,14 +145,14 @@ public class Steps {
         Assert.assertEquals(0.00, coinRejectTotal, 0.00001);
     }
 
-    @And("^the total credit shows (British|Euro) ([^\"]*)$")
+    @And("^the total credit shows (£|€)([^\"]*)$")
     public void theTotalCreditShowsCurrency(String currency, String total) {
         Assert.assertEquals(currency, currentCurrency);
-        Assert.assertEquals(Double.parseDouble(total), currentCredit, 0.0001);
+        Assert.assertEquals(currencyPrettifier(total), currentCredit, 0.0001);
     }
 
-    @When("^I insert (\\d+) ([^\"]*)$")
-    public void iInsertInvalidCoins(String denomination, String currency) {
+    @When("^I insert ([^\"]*)(\\d+)$")
+    public void iInsertInvalidCoins(String currency, String denomination) {
         insertCoin(currency, denomination);
     }
 
@@ -165,12 +161,12 @@ public class Steps {
         Assert.assertTrue(coinRejectTotal > 0.00);
     }
 
-    @And("^the ([^\"]*) (?:[^\"]*) is returned to the customer$")
-    public void theCHFIsReturnedToTheCustomer(String denomination) {
-        Assert.assertEquals(Double.parseDouble(denomination), coinRejectTotal, 0.0001);
+    @And("^the (?:[^\"]*)(\\d+) is returned to me$")
+    public void theDollarIsReturnedToTheCustomer(String value) {
+        Assert.assertEquals(currencyPrettifier(value), coinRejectTotal, 0.0001);
     }
 
-    @And("^the current credit is (British|Euro) ([^\"]*)$")
+    @And("^the current credit is (£|€)([^\"]*)$")
     public void theCurrentCreditIs(String currency, String credit) {
         setCurrency(currency);
         currentCredit = currencyPrettifier(credit);
@@ -193,7 +189,7 @@ public class Steps {
         pressCoinReturn();
     }
 
-    @Then("^([^\"]*) is returned to me in (\\d+)$")
+    @Then("^([^\"]*) is returned to me in (\\d+) coin(?:|s)$")
     public void changeIsReturnedToMeInCoins(String total, int coins) {
         Assert.assertEquals(currencyPrettifier(total), coinRejectTotal, 0.0001);
         Assert.assertEquals(coins, rejectedCoins);
@@ -202,5 +198,28 @@ public class Steps {
     @Then("^the display screen contains \"([^\"]*)\"$")
     public void theDisplayScreenContains(String string) {
         Assert.assertTrue(displayScreen.contains(string));
+    }
+
+    @When("^I select a product that costs (£|€)([^\"]*)$")
+    public void iSelectAProductThatCosts(String currency, String cost) {
+        setCurrency(currency);
+        currentProduct = cost;
+        displayScreen = "Please pay " + currency + cost;
+    }
+
+    @And("^product is delivered$")
+    public void productIsDelivered() {
+        Assert.assertTrue(productDelivered);
+    }
+
+    @Then("^I can pay by card$")
+    public void iCanPayByCard() {
+        // Card payment validation
+        productDelivered = true;
+    }
+
+    @And("^no change is due$")
+    public void noChangeIsDue() {
+        Assert.assertEquals(0.00, currentCredit, 0.0001);
     }
 }
